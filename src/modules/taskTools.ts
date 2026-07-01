@@ -71,14 +71,15 @@ export function registerTaskTools(server: McpServer) {
     // 新しいタスクを作成するツール
     server.tool(
         "create_task",
-        "Create a new task in a task list.",
+        "Create a new task in a task list. Use parent to create a subtask under an existing task.",
         {
             taskListId: z.string().describe("ID of the task list to add task to"),
             title: z.string().describe("Title of the task"),
             notes: z.string().optional().describe("Optional notes for the task"),
-            due: z.string().optional().describe("Due date in RFC 3339 format (e.g. 2023-12-31T23:59:59Z)")
+            due: z.string().optional().describe("Due date in RFC 3339 format (e.g. 2023-12-31T23:59:59Z)"),
+            parent: z.string().optional().describe("ID of the parent task. When set, creates a subtask under that task."),
         },
-        async ({ taskListId, title, notes, due }) => {
+        async ({ taskListId, title, notes, due, parent }) => {
             try {
                 const service = await getTasksService();
                 
@@ -88,11 +89,18 @@ export function registerTaskTools(server: McpServer) {
                 
                 if (notes) taskData.notes = notes;
                 if (due) taskData.due = due;
-                
-                const response = await service.tasks.insert({
+
+                const insertParams: {
+                    tasklist: string;
+                    requestBody: typeof taskData;
+                    parent?: string;
+                } = {
                     tasklist: taskListId,
-                    requestBody: taskData
-                });
+                    requestBody: taskData,
+                };
+                if (parent) insertParams.parent = parent;
+
+                const response = await service.tasks.insert(insertParams);
                 
                 return {
                     content: [{
@@ -102,6 +110,103 @@ export function registerTaskTools(server: McpServer) {
                 };
             } catch (error: any) {
                 console.error("Error creating task:", error);
+                return {
+                    content: [{
+                        type: "text",
+                        text: `Error: ${error.message}`
+                    }],
+                    isError: true
+                };
+            }
+        }
+    );
+
+    // タスクの内容を更新するツール
+    server.tool(
+        "update_task",
+        "Update an existing task's title, notes, or due date.",
+        {
+            taskListId: z.string().describe("ID of the task list the task belongs to"),
+            taskId: z.string().describe("ID of the task to update"),
+            title: z.string().optional().describe("New title for the task"),
+            notes: z.string().optional().describe("New notes for the task"),
+            due: z.string().optional().describe("New due date in RFC 3339 format (e.g. 2023-12-31T23:59:59Z)"),
+        },
+        async ({ taskListId, taskId, title, notes, due }) => {
+            try {
+                const service = await getTasksService();
+
+                const taskInfo = await service.tasks.get({
+                    tasklist: taskListId,
+                    task: taskId,
+                });
+
+                const requestBody = { ...taskInfo.data };
+                if (title !== undefined) requestBody.title = title;
+                if (notes !== undefined) requestBody.notes = notes;
+                if (due !== undefined) requestBody.due = due;
+
+                const response = await service.tasks.update({
+                    tasklist: taskListId,
+                    task: taskId,
+                    requestBody,
+                });
+
+                return {
+                    content: [{
+                        type: "text",
+                        text: `Task updated successfully: ${JSON.stringify(response.data, null, 2)}`
+                    }]
+                };
+            } catch (error: any) {
+                console.error("Error updating task:", error);
+                return {
+                    content: [{
+                        type: "text",
+                        text: `Error: ${error.message}`
+                    }],
+                    isError: true
+                };
+            }
+        }
+    );
+
+    // タスクの親や並び順を変更するツール
+    server.tool(
+        "move_task",
+        "Move a task under a different parent task or change its order within the list.",
+        {
+            taskListId: z.string().describe("ID of the task list the task belongs to"),
+            taskId: z.string().describe("ID of the task to move"),
+            parent: z.string().optional().describe("ID of the new parent task. Omit to move to the top level."),
+            previous: z.string().optional().describe("ID of the task that should appear immediately before this task"),
+        },
+        async ({ taskListId, taskId, parent, previous }) => {
+            try {
+                const service = await getTasksService();
+
+                const moveParams: {
+                    tasklist: string;
+                    task: string;
+                    parent?: string;
+                    previous?: string;
+                } = {
+                    tasklist: taskListId,
+                    task: taskId,
+                };
+                if (parent) moveParams.parent = parent;
+                if (previous) moveParams.previous = previous;
+
+                const response = await service.tasks.move(moveParams);
+
+                return {
+                    content: [{
+                        type: "text",
+                        text: `Task moved successfully: ${JSON.stringify(response.data, null, 2)}`
+                    }]
+                };
+            } catch (error: any) {
+                console.error("Error moving task:", error);
                 return {
                     content: [{
                         type: "text",

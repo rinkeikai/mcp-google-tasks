@@ -4,6 +4,10 @@ AI assistants and Google Tasks integration through Model Context Protocol.
 
 AIアシスタントとGoogle Tasksを連携させるModel Context Protocol実装。
 
+> **Fork notice:** This repository is a fork of [ktmage/mcp-google-tasks](https://github.com/ktmage/mcp-google-tasks) with additional support for subtasks, task updates, and task moves.
+>
+> **フォークについて:** 本リポジトリは [ktmage/mcp-google-tasks](https://github.com/ktmage/mcp-google-tasks) のフォークで、サブタスク作成・タスク更新・タスク移動に対応しています。
+
 ## 目次 / Table of Contents
 
 - [English](#english)
@@ -38,7 +42,9 @@ This MCP server provides the following functions:
 
 - Fetch task list collections
 - Get tasks within a specific task list
-- Create new tasks
+- Create new tasks (including subtasks via `parent`)
+- Update task title, notes, and due date
+- Move tasks under a different parent or reorder them
 - Mark tasks as completed
 - Delete tasks
 
@@ -81,12 +87,14 @@ npm install
 
 1. Rename the downloaded JSON file to `credentials.json`
 2. Place this file in the project's root directory (same level as package.json)
+3. Alternatively, copy `credentials.json.example` to `credentials.json` and fill in your OAuth client values
 
 ```
 mcp-google-tasks/
 ├── src/
 ├── package.json
-├── credentials.json  <- place here
+├── credentials.json.example
+├── credentials.json  <- place here (do not commit)
 └── ...
 ```
 
@@ -163,6 +171,7 @@ Parameters:
 - `title`: Task title
 - `notes` (optional): Detailed task description
 - `due` (optional): Due date/time (RFC 3339 format, e.g., 2023-12-31T23:59:59Z)
+- `parent` (optional): Parent task ID. When set, creates a subtask under that task
 
 Example:
 ```
@@ -174,6 +183,49 @@ create_task(
 )
 => Created task information (JSON format)
 ```
+
+#### update_task
+
+Updates an existing task's title, notes, or due date.
+
+Parameters:
+- `taskListId`: ID of the task list the task belongs to
+- `taskId`: ID of the task to update
+- `title` (optional): New task title
+- `notes` (optional): New task notes
+- `due` (optional): New due date/time (RFC 3339 format)
+
+Example:
+```
+update_task(
+  taskListId: "YOUR_TASK_LIST_ID",
+  taskId: "YOUR_TASK_ID",
+  title: "Updated title"
+)
+=> Updated task information (JSON format)
+```
+
+#### move_task
+
+Moves a task under a different parent task or changes its order.
+
+Parameters:
+- `taskListId`: ID of the task list the task belongs to
+- `taskId`: ID of the task to move
+- `parent` (optional): New parent task ID. Omit to move to the top level
+- `previous` (optional): Task ID that should appear immediately before this task
+
+Example:
+```
+move_task(
+  taskListId: "YOUR_TASK_LIST_ID",
+  taskId: "YOUR_TASK_ID",
+  parent: "PARENT_TASK_ID"
+)
+=> Moved task information (JSON format)
+```
+
+Note: Google Tasks supports only one level of nesting (parent task → subtasks).
 
 #### complete_task
 
@@ -262,7 +314,9 @@ Model Context Protocol (MCP)を使用してGoogle Tasksを操作するための�
 
 - タスクリスト一覧の取得
 - 特定のタスクリスト内のタスク一覧の取得
-- 新しいタスクの作成
+- 新しいタスクの作成（`parent` によるサブタスク作成に対応）
+- タスクのタイトル・メモ・期限の更新
+- 親タスクの付け替えや並び順の変更
 - タスクを完了としてマーク
 - タスクの削除
 
@@ -305,12 +359,14 @@ npm install
 
 1. ダウンロードしたJSONファイルを`credentials.json`という名前で変更
 2. このファイルをプロジェクトのルートディレクトリ（package.jsonと同じ階層）に配置
+3. または `credentials.json.example` を `credentials.json` にコピーし、OAuth クライアントの値を設定
 
 ```
 mcp-google-tasks/
 ├── src/
 ├── package.json
-├── credentials.json  <- ここに配置
+├── credentials.json.example
+├── credentials.json  <- ここに配置（コミットしない）
 └── ...
 ```
 
@@ -387,6 +443,7 @@ list_tasks(taskListId: "YOUR_TASK_LIST_ID")
 - `title`: タスクのタイトル
 - `notes` (オプション): タスクの詳細説明
 - `due` (オプション): 期限日時 (RFC 3339形式、例: 2023-12-31T23:59:59Z)
+- `parent` (オプション): 親タスクのID。指定するとそのタスクのサブタスクとして作成
 
 例:
 ```
@@ -398,6 +455,49 @@ create_task(
 )
 => 作成されたタスクの情報（JSONフォーマット）
 ```
+
+#### update_task
+
+既存タスクのタイトル・メモ・期限を更新します。
+
+パラメータ：
+- `taskListId`: タスクが属するタスクリストのID
+- `taskId`: 更新するタスクのID
+- `title` (オプション): 新しいタイトル
+- `notes` (オプション): 新しいメモ
+- `due` (オプション): 新しい期限 (RFC 3339形式)
+
+例:
+```
+update_task(
+  taskListId: "YOUR_TASK_LIST_ID",
+  taskId: "YOUR_TASK_ID",
+  title: "更新後のタイトル"
+)
+=> 更新されたタスクの情報（JSONフォーマット）
+```
+
+#### move_task
+
+タスクの親を付け替えたり、並び順を変更します。
+
+パラメータ：
+- `taskListId`: タスクが属するタスクリストのID
+- `taskId`: 移動するタスクのID
+- `parent` (オプション): 新しい親タスクのID。省略時はトップレベルへ移動
+- `previous` (オプション): このタスクの直前に表示するタスクのID
+
+例:
+```
+move_task(
+  taskListId: "YOUR_TASK_LIST_ID",
+  taskId: "YOUR_TASK_ID",
+  parent: "PARENT_TASK_ID"
+)
+=> 移動後のタスク情報（JSONフォーマット）
+```
+
+補足: Google Tasks の入れ子は親タスク → サブタスクの1段のみ対応しています。
 
 #### complete_task
 
