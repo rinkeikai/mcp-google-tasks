@@ -4,9 +4,9 @@ AI assistants and Google Tasks integration through Model Context Protocol.
 
 AIアシスタントとGoogle Tasksを連携させるModel Context Protocol実装。
 
-> **Fork notice:** This repository is a fork of [ktmage/mcp-google-tasks](https://github.com/ktmage/mcp-google-tasks) with additional support for subtasks, task updates, and task moves.
+> **Origin:** Based on [ktmage/mcp-google-tasks](https://github.com/ktmage/mcp-google-tasks) (MIT). This repository is maintained independently with additional support for subtasks, task updates, and task moves.
 >
-> **フォークについて:** 本リポジトリは [ktmage/mcp-google-tasks](https://github.com/ktmage/mcp-google-tasks) のフォークで、サブタスク作成・タスク更新・タスク移動に対応しています。
+> **由来:** [ktmage/mcp-google-tasks](https://github.com/ktmage/mcp-google-tasks)（MIT）をベースに、サブタスク作成・タスク更新・タスク移動を追加した独立メンテナンス版です。
 
 ## 目次 / Table of Contents
 
